@@ -1,3 +1,0 @@
-import model SMEFTsim_U35_MwScheme_UFO_v302-massless_HBox_HW_W
-generate p p > z z j j QCD=0 SMHLOOP=0 NP=1
-output ZZ_dim6_HBox_HW_W_MS_FULL
