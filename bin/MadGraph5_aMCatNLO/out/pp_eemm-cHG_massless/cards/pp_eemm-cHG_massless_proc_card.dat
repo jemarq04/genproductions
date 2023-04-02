@@ -1,0 +1,3 @@
+import model SMEFTsim_U35_MwScheme_UFO_v302-cHG_massless
+generate p p > e+ e- mu+ mu- QCD=0 NP=1
+output pp_eemm-cHG_massless

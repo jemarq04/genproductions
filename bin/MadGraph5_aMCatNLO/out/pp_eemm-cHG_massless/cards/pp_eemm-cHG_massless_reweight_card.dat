@@ -1,0 +1,17 @@
+#change helicity False
+change rwgt_dir rwgt
+
+launch --rwgt_name=1011
+ set smeft 6 1.100000e-02
+
+launch --rwgt_name=1000
+ set smeft 6 0.000000e+00
+
+launch --rwgt_name=1001
+ set smeft 6 1.000000e+00
+
+launch --rwgt_name=1010
+ set smeft 6 10.000000e+00
+
+launch --rwgt_name=1100
+ set smeft 6 100.000000e+00
