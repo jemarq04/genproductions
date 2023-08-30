@@ -75,21 +75,20 @@ fi
 
 ### retrieve the powheg source tar ball
 export POWHEGSRC=$powhegSrc 
-
 echo 'D/L POWHEG source...'
 
 if [ $svnRev -eq 0 ]; then
-  if [ ! -f $${POWHEGSRC} ]; then
-    wget --no-verbose --no-check-certificate http://cms-project-generators.web.cern.ch/cms-project-generators/slc6_amd64_gcc481/powheg/V2.0/src/$${POWHEGSRC} || fail_exit "Failed to get powheg tar ball "
-  fi
-  tar zxf $${POWHEGSRC}
+ if [ ! -f $${POWHEGSRC} ]; then
+   wget --no-verbose --no-check-certificate http://cms-project-generators.web.cern.ch/cms-project-generators/slc6_amd64_gcc481/powheg/V2.0/src/$${POWHEGSRC} || fail_exit "Failed to get powheg tar ball "
+ fi
+ tar zxf $${POWHEGSRC}
 else
-  ### retrieve powheg source from svn
-  svn checkout --revision $svnRev --username anonymous --password anonymous $svnRepo POWHEG-BOX
+  # retrieve powheg source from svn
+ svn checkout --revision $svnRev --username anonymous --password anonymous $svnRepo POWHEG-BOX
 fi
 #cp -p ../$${POWHEGSRC} .
 
-# increase maxseeds to 10000
+#increase maxseeds to 10000
 sed -i -e "s#par_maxseeds=200,#par_maxseeds=10000,#g" POWHEG-BOX/include/pwhg_par.h
 
 if [ -e POWHEG-BOX/$${process}.tgz ]; then
@@ -138,7 +137,7 @@ pwhg_main:#g' Makefile
 echo "pwhg_main.o: svn.version" >> Makefile
 echo "lhefwrite.o: svn.version" >> Makefile
 
-# Fix gcc8 error
+# Fix gcc>8 error
 sed -i -e "s#F77=gfortran#F77=gfortran -std=legacy#g" Makefile
 sed -i -e "s#F77= gfortran#F77= gfortran -std=legacy#g" Makefile
 sed -i -e "s#FFLAGS= #FFLAGS= -std=legacy #g" virtual/Source/make_opts
@@ -184,15 +183,26 @@ sed -i -e "s#LHAPDF_CONFIG[ \t]*=[ \t]*#\#LHAPDF_CONFIG=#g" Makefile
 sed -i -e "s#DEBUG[ \t]*=[ \t]*#\#DEBUG=#g" Makefile
 sed -i -e "s#FPE[ \t]*=[ \t]*#\#FPE=#g" Makefile
 
-$patch_4 
+if [[ `grep GoSam Makefile` != "" || `grep Gosam Makefile` != "" || `grep GOSAM Makefile` != "" ]]; then
+  sed -i -e "s#-fno-automatic#-fallow-invalid-boz#g" Makefile
+fi
 
+$patch_4 
 
 # Add libraries now
 NEWRPATH1=`ls /cvmfs/cms.cern.ch/$${SCRAM_ARCH}/external/gcc/*/* | grep "/lib64" | head -n 1`
 NEWRPATH1=$${NEWRPATH1%?}
 NEWRPATH2=`ls /cvmfs/cms.cern.ch/$${SCRAM_ARCH}/external/zlib-x86_64/*/* | grep "/lib" | head -n 1`
 NEWRPATH2=$${NEWRPATH2%?}
-echo "RPATHLIBS= -Wl,-rpath,$${NEWRPATH1} -L$${NEWRPATH1} -lgfortran -lstdc++ -Wl,-rpath,$${NEWRPATH2} -L$${NEWRPATH2} -lz" >> tmpfile
+
+# Add python3 for ggHH 
+if [[ $$process == "ggHH" || $$process == "ggHH_SMEFT" ]]; then
+  export MYLIBDIR=`scram tool info python3 | grep LIBDIR | sed -e s%LIBDIR=%%` 
+  export MYLIB=`scram tool info python3 | grep 'LIB=' | sed -e s%LIB=%%`
+  echo "RPATHLIBS= -Wl,-rpath,$${NEWRPATH1} -L$${NEWRPATH1} -lgfortran -lstdc++ -Wl,-rpath,$${NEWRPATH2} -L$${NEWRPATH2} -lz -L$${MYLIBDIR} -l$${MYLIB}" >> tmpfile
+else
+  echo "RPATHLIBS= -Wl,-rpath,$${NEWRPATH1} -L$${NEWRPATH1} -lgfortran -lstdc++ -Wl,-rpath,$${NEWRPATH2} -L$${NEWRPATH2} -lz" >> tmpfile
+fi
 
 $patch_5 
 
@@ -232,7 +242,10 @@ $patch_7
 $patch_0 
 
 export PYTHONPATH=./Virtual/:$$PYTHONPATH
-export C_INCLUDE_PATH=$$C_INCLUDE_PATH:/usr/include/python3.6m/
+export MYINCLUDE=`scram tool info python3 | grep INCLUDE | sed -e s%INCLUDE=%%` 
+if [[ $$process == "ggHH" || $$process == "ggHH_SMEFT" ]]; then
+    export C_INCLUDE_PATH=$$C_INCLUDE_PATH:$${MYINCLUDE}
+fi
 
 make pwhg_main || fail_exit "Failed to compile pwhg_main"
 
